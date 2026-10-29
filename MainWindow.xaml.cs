@@ -215,34 +215,47 @@ namespace TaskbarInfo
             }
         }
 
+        /// <summary>
+        /// Loads the tray glyph. The artwork is black with a white outline so a single
+        /// asset stays legible on both light and dark taskbars, and no theme switch is
+        /// needed when the user changes the system theme.
+        /// </summary>
+        private void ApplyTrayIcon()
+        {
+            if (_notifyIcon == null) return;
+
+            try
+            {
+                var uri = new Uri("pack://application:,,,/src/icons/TinyBar_Tray.png");
+                var info = Application.GetResourceStream(uri);
+                if (info != null)
+                {
+                    using (var stream = info.Stream)
+                    using (var bitmap = new System.Drawing.Bitmap(stream))
+                    using (var icon = System.Drawing.Icon.FromHandle(bitmap.GetHicon()))
+                    {
+                        // Clone so the HICON can be destroyed with the temporary bitmap.
+                        _notifyIcon.Icon = (System.Drawing.Icon)icon.Clone();
+                    }
+
+                    return;
+                }
+            }
+            catch
+            {
+                // Fall through to the generic system icon.
+            }
+
+            _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
+        }
+
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             // Init Tray Icon
             _notifyIcon = new System.Windows.Forms.NotifyIcon();
             try
             {
-                // Tray Icon
-                try
-                {
-                    var trayUri = new Uri("pack://application:,,,/src/icons/TinyBar_Tray.png");
-                    var info = Application.GetResourceStream(trayUri) ?? Application.GetResourceStream(new Uri("pack://application:,,,/src/icons/托盘图标.png"));
-                    if (info != null)
-                    {
-                        using (var stream = info.Stream)
-                        using (var bitmap = new System.Drawing.Bitmap(stream))
-                        {
-                            _notifyIcon.Icon = System.Drawing.Icon.FromHandle(bitmap.GetHicon());
-                        }
-                    }
-                    else
-                    {
-                        _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
-                    }
-                }
-                catch
-                {
-                    _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
-                }
+                ApplyTrayIcon();
 
                 // Window Icon
                 this.Icon = App.GetAppIcon();
@@ -511,6 +524,7 @@ namespace TaskbarInfo
         private void ApplySettings()
         {
             ApplyApplicationTheme();
+            ApplyTrayIcon();
             AutoStartupService.Sync(_settings.LaunchOnStartup);
 
             // Sync Process Monitoring
@@ -1316,6 +1330,7 @@ namespace TaskbarInfo
             }
 
             ApplyApplicationTheme();
+            ApplyTrayIcon();
             ApplySettings();
         }
 
